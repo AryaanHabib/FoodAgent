@@ -1,0 +1,35 @@
+# ─── Node/npm ────────────────────────────────────────────────────────────────
+node_modules/            # dependencies
+npm-debug.log*           # npm logs
+yarn-debug.log*          # yarn logs
+pnpm-debug.log*          # pnpm logs
+
+# ─── Environment ────────────────────────────────────────────────────────────
+.env                     # actual secrets
+.env.*.local             # any per‐machine overrides
+
+# ─── Build & coverage ───────────────────────────────────────────────────────
+dist/
+build/
+coverage/
+.nyc_output/
+
+# ─── Logs & runtime ─────────────────────────────────────────────────────────
+logs/
+*.log
+pids/
+*.pid
+*.pid.lock
+
+# ─── IDE / Editor ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+
+# ─── OS ─────────────────────────────────────────────────────────────────────
+Thumbs.db
+
