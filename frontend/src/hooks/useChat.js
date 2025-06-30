@@ -194,7 +194,7 @@ You are a JSON classifier. The user has just been shown three restaurants and yo
 Return EXACTLY a JSON object with:
   "action": one of "pick", "more", or "change"
   - "pick" if they are selecting one of the shown restaurants
-  - "more" if they want to see more options
+  - "more" if they want to see more options.
   - "change" if they want to pick a different cuisine/flow
 
 If "pick", also include:
@@ -213,13 +213,68 @@ Respond with ONLY the JSON object—no extra text.
     return JSON.parse(raw);
   }
 
+  /**
+   * Wipe out all in-memory state + persist clearing cuisine & serviceType,
+   * then restart with the orderDetails prompt.
+   */
+  async function resetAllAndRestart(history) {
+    // Clear persistent memory slots
+    await setMemory(m => ({
+      ...m,
+      serviceType: null,
+    }));
+    await persistMemory({ cuisine: null, serviceType: null });
 
+    // Reset local flags & refs
+    setAskedService(false);
+    setSuggestionsShown(false);
+    allRestaurantsRef.current = [];
+    fullOptionsRef.current     = [];
+    pageRef.current           = 0;
+    setRestaurantOptions([]);
+    setSelectedRestaurant(null);
+
+    // Kick back into the cuisine selection flow
+    return normal(history);
+  }
+  async function classifyChangeOfMind(text) {
+    const resp = await extractor.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `
+You are a JSON classifier.  The user may say something that indicates they want to restart the ordering flow 
+– e.g. changing their mind, not ready to order, etc.
+
+Return EXACTLY a JSON object with:
+  { "changeMind": true } if they are asking to start over
+  { "changeMind": false } otherwise
+
+Respond with ONLY the JSON object—no extra text.
+        `.trim()
+        },
+        { role: "user", content: text }
+      ],
+      temperature: 0,
+      max_tokens: 10
+    });
+    const raw = resp.choices[0].message.content.match(/\{[\s\S]*\}/)?.[0] || "{}";
+    const { changeMind } = JSON.parse(raw);
+    return Boolean(changeMind);
+  }
 
   // — Main sendMessage
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
     const userMsg = { role: "user", content: text };
     setMessages(ms => [...ms, userMsg]);
+    const wantsReset = await classifyChangeOfMind(text);
+    setLoading(false);
+    if (wantsReset) {
+      return resetAllAndRestart([...messages, userMsg]);
+    }
+
 
     // — “Yes” to favorite‐cuisine greeting
     const lc = text.trim().toLowerCase();
